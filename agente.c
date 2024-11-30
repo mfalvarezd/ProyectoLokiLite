@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
             perror("Error ejecutando execvp para servicio 1");
             exit(1);
         } else if (pid1 < 0) {
-            perror("Error al crear proceso hijo");
+            perror("Error al crear proceso hijo para servicio 1");
             return 1;
         }
         int status1;
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
             perror("Error ejecutando execvp para servicio 2");
             exit(1);
         } else if (pid2 < 0) {
-            perror("Error al crear proceso hijo");
+            perror("Error al crear proceso hijo para servicio 2");
             return 1;
         }
         int status2;
