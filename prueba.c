@@ -13,6 +13,7 @@ int main() {
     } else if (pid1 == 0) {
         // Proceso hijo 1
         char *args1[] = {"ls", "-l", NULL}; // Comando 'ls -l'
+        printf("[proceso1]");
         execvp(args1[0], args1); // Ejecuta 'ls'
         perror("Error ejecutando execvp para ls"); // Solo se ejecuta si execvp falla
         exit(1);
@@ -26,6 +27,7 @@ int main() {
         return 1;
     } else if (pid2 == 0) {
         // Proceso hijo 2
+        printf("PROCESO2");
         char *args2[] = {"date", NULL}; // Comando 'date'
         execvp(args2[0], args2); // Ejecuta 'date'
         perror("Error ejecutando execvp para date"); // Solo se ejecuta si execvp falla
