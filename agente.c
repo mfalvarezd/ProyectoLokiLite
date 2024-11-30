@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <unistd.h>
 
 int main(int argc, char *argv[]) {
     if (argc < 3) {
@@ -20,7 +20,8 @@ int main(int argc, char *argv[]) {
 
     printf("Monitoreando servicios: %s, %s\n", servicio1, servicio2);
     printf("Tiempo de actualización: %d segundos\n", tiempo_actualizacion);
-     // Comando para journalctl del primer servicio
+
+    // Comando para journalctl del primer servicio
     char *args[] = {"journalctl", "-u", servicio1, "-n", "10", NULL};
 
     // Ejecuta el comando
@@ -30,6 +31,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
+    // Nota: El código nunca llegará aquí si execvp tiene éxito
     return 0;
 }
