@@ -20,8 +20,15 @@ int main(int argc, char *argv[]) {
 
     printf("Monitoreando servicios: %s, %s\n", servicio1, servicio2);
     printf("Tiempo de actualización: %d segundos\n", tiempo_actualizacion);
-    char *args[] = {"journalctl", "-u", "ssh.service", "-n", "10", NULL};
-    execvp(args[0], args);
+     // Comando para journalctl del primer servicio
+    char *args[] = {"journalctl", "-u", servicio1, "-n", "10", NULL};
+
+    // Ejecuta el comando
+    printf("Ejecutando comando para servicio: %s\n", servicio1);
+    if (execvp(args[0], args) == -1) {
+        perror("Error ejecutando execvp");
+        return 1;
+    }
 
 
     return 0;
