@@ -25,6 +25,10 @@ int main(int argc, char *argv[]) {
     int tiempo_actualizacion = 5; // Valor por defecto
     if (argc > 3) {
         tiempo_actualizacion = atoi(argv[3]);
+        if (tiempo_actualizacion <= 0) {
+            fprintf(stderr, "El tiempo de actualización debe ser un valor positivo.\n");
+            return 1;
+        }
     }
 
     printf("Monitoreando servicios: %s, %s\n", servicio1, servicio2);
@@ -48,7 +52,11 @@ int main(int argc, char *argv[]) {
             perror("Error al crear proceso hijo");
             return 1;
         }
-        wait(NULL); // Espera a que termine el hijo
+        int status1;
+        waitpid(pid1, &status1, 0); // Espera a que termine el hijo
+        if (WIFEXITED(status1) && WEXITSTATUS(status1) != 0) {
+            fprintf(stderr, "El comando journalctl para %s terminó con error.\n", servicio1);
+        }
 
         // Comando para journalctl del segundo servicio
         char *args2[] = {"journalctl", "-u", servicio2, "-n", "10", NULL};
@@ -63,7 +71,11 @@ int main(int argc, char *argv[]) {
             perror("Error al crear proceso hijo");
             return 1;
         }
-        wait(NULL); // Espera a que termine el hijo
+        int status2;
+        waitpid(pid2, &status2, 0); // Espera a que termine el hijo
+        if (WIFEXITED(status2) && WEXITSTATUS(status2) != 0) {
+            fprintf(stderr, "El comando journalctl para %s terminó con error.\n", servicio2);
+        }
 
         sleep(tiempo_actualizacion); // Espera antes de la siguiente actualización
     }
