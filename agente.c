@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 int keep_running = 1;
 
@@ -37,20 +38,30 @@ int main(int argc, char *argv[]) {
         // Comando para journalctl del primer servicio
         char *args1[] = {"journalctl", "-u", servicio1, "-n", "10", NULL};
         printf("Ejecutando comando para servicio: %s\n", servicio1);
-        if (fork() == 0) { // Proceso hijo
+        
+        pid_t pid1 = fork();
+        if (pid1 == 0) { // Proceso hijo
             execvp(args1[0], args1);
-            perror("Error ejecutando execvp");
+            perror("Error ejecutando execvp para servicio 1");
             exit(1);
+        } else if (pid1 < 0) {
+            perror("Error al crear proceso hijo");
+            return 1;
         }
         wait(NULL); // Espera a que termine el hijo
 
         // Comando para journalctl del segundo servicio
         char *args2[] = {"journalctl", "-u", servicio2, "-n", "10", NULL};
         printf("Ejecutando comando para servicio: %s\n", servicio2);
-        if (fork() == 0) { // Proceso hijo
+        
+        pid_t pid2 = fork();
+        if (pid2 == 0) { // Proceso hijo
             execvp(args2[0], args2);
-            perror("Error ejecutando execvp");
+            perror("Error ejecutando execvp para servicio 2");
             exit(1);
+        } else if (pid2 < 0) {
+            perror("Error al crear proceso hijo");
+            return 1;
         }
         wait(NULL); // Espera a que termine el hijo
 
