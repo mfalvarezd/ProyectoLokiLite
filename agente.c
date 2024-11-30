@@ -27,7 +27,8 @@ int main(int argc, char *argv[]) {
 
     // Tiempo de actualización
     int tiempo_actualizacion = 5; // Valor por defecto
-    if (argc > 2) { // Si hay más de 2 argumentos, podría haber un tiempo de actualización
+    // Verificamos si se proporcionó un tiempo de actualización
+    if (argc > 3) { // Solo si hay más de 3 argumentos, se puede considerar un tiempo de actualización
         tiempo_actualizacion = atoi(argv[argc - 1]); // Último argumento como tiempo de actualización
         if (tiempo_actualizacion <= 0) {
             fprintf(stderr, "El tiempo de actualización debe ser un valor positivo.\n");
