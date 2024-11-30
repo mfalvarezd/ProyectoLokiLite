@@ -11,6 +11,7 @@ void handle_sigint(int sig) {
 }
 
 void print_usage(const char *prog_name) {
+    printf("Asegurese de monitorear al menos dos servicios\n");
     printf("Uso: %s <servicio1> <servicio2> [servicio3] ... [servicioN] [tiempo_actualizacion]\n", prog_name);
 }
 
