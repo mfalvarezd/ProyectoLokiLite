@@ -11,13 +11,12 @@ void handle_sigint(int sig) {
 }
 
 void print_usage(const char *prog_name) {
-    printf("Asegurese de monitorear al menos dos servicios\n");
     printf("Uso: %s <servicio1> <servicio2> [servicio3] ... [servicioN] [tiempo_actualizacion]\n", prog_name);
 }
 
 int main(int argc, char *argv[]) {
-    
-    if (argc < 4) { 
+    // Validación de argumentos: debe haber al menos 3 argumentos (nombre del programa + 2 servicios)
+    if (argc < 3) { // Debe haber al menos 2 servicios
         print_usage(argv[0]);
         return 1;
     }
@@ -27,10 +26,13 @@ int main(int argc, char *argv[]) {
     char **servicios = argv + 1; // Los servicios comienzan en argv[1]
 
     // Tiempo de actualización
-    int tiempo_actualizacion = atoi(argv[argc - 1]); // Último argumento como tiempo de actualización
-    if (tiempo_actualizacion <= 0) {
-        fprintf(stderr, "El tiempo de actualización debe ser un valor positivo.\n");
-        return 1;
+    int tiempo_actualizacion = 5; // Valor por defecto
+    if (argc > 2) { // Si hay más de 2 argumentos, podría haber un tiempo de actualización
+        tiempo_actualizacion = atoi(argv[argc - 1]); // Último argumento como tiempo de actualización
+        if (tiempo_actualizacion <= 0) {
+            fprintf(stderr, "El tiempo de actualización debe ser un valor positivo.\n");
+            return 1;
+        }
     }
 
     printf("Monitoreando servicios: ");
@@ -39,7 +41,7 @@ int main(int argc, char *argv[]) {
     }
     printf("Tiempo de actualización: %d segundos\n", tiempo_actualizacion);
 
-    signal(SIGINT, handle_sigint); // senal de 1 a 0 al recibir una interrupcion 
+    signal(SIGINT, handle_sigint);
 
     // Bucle de monitoreo
     while (keep_running) {
@@ -65,7 +67,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        sleep(tiempo_actualizacion); // tiempo de actualizacion
+        sleep(tiempo_actualizacion); // Espera antes de la siguiente actualización
     }
 
     printf("Monitoreo detenido.\n");
