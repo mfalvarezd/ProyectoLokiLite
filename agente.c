@@ -6,7 +6,6 @@
 
 int keep_running = 1;
 
-// Manejo de señal para terminación
 void handle_sigint(int sig) {
     keep_running = 0;
 }
@@ -17,12 +16,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Servicios a monitorear
+
     char *servicio1 = argv[1];
     char *servicio2 = argv[2];
 
-    // Tiempo de actualización
-    int tiempo_actualizacion = 5; // Valor por defecto
+    int tiempo_actualizacion = 5; 
     if (argc > 3) {
         tiempo_actualizacion = atoi(argv[3]);
         if (tiempo_actualizacion <= 0) {
@@ -34,8 +32,8 @@ int main(int argc, char *argv[]) {
     printf("Monitoreando servicios: %s, %s\n", servicio1, servicio2);
     printf("Tiempo de actualización: %d segundos\n", tiempo_actualizacion);
 
-    // Configurar manejo de señal
-    signal(SIGINT, handle_sigint);
+
+    signal(SIGINT, handle_sigint); // CTRL + C PARA TERMINAR LA EJECUCION
 
     // Bucle de monitoreo
     while (keep_running) {
@@ -53,7 +51,7 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         int status1;
-        waitpid(pid1, &status1, 0); // Espera a que termine el hijo
+        waitpid(pid1, &status1, 0); // Espera a que termine el hijo pid1
         if (WIFEXITED(status1) && WEXITSTATUS(status1) != 0) {
             fprintf(stderr, "El comando journalctl para %s terminó con error.\n", servicio1);
         }
@@ -72,12 +70,12 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         int status2;
-        waitpid(pid2, &status2, 0); // Espera a que termine el hijo
+        waitpid(pid2, &status2, 0); // Espera a que termine el hijo pid2
         if (WIFEXITED(status2) && WEXITSTATUS(status2) != 0) {
             fprintf(stderr, "El comando journalctl para %s terminó con error.\n", servicio2);
         }
 
-        sleep(tiempo_actualizacion); // Espera antes de la siguiente actualización
+        sleep(tiempo_actualizacion); // periodo de espera
     }
 
     printf("Monitoreo detenido.\n");
