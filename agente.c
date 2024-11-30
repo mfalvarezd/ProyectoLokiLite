@@ -15,7 +15,8 @@ void print_usage(const char *prog_name) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) {
+    // Validación de argumentos: debe haber al menos 3 argumentos (nombre del programa + 2 servicios)
+    if (argc < 4) { // Cambiado de 3 a 4 porque necesitamos al menos 2 servicios y 1 tiempo de actualización
         print_usage(argv[0]);
         return 1;
     }
@@ -24,13 +25,11 @@ int main(int argc, char *argv[]) {
     int num_servicios = argc - 2; // Restamos 2 para los nombres de los servicios
     char **servicios = argv + 1; // Los servicios comienzan en argv[1]
 
-    int tiempo_actualizacion = 5; 
-    if (argc > 3) {
-        tiempo_actualizacion = atoi(argv[argc - 1]); // Último argumento como tiempo de actualización
-        if (tiempo_actualizacion <= 0) {
-            fprintf(stderr, "El tiempo de actualización debe ser un valor positivo.\n");
-            return 1;
-        }
+    // Tiempo de actualización
+    int tiempo_actualizacion = atoi(argv[argc - 1]); // Último argumento como tiempo de actualización
+    if (tiempo_actualizacion <= 0) {
+        fprintf(stderr, "El tiempo de actualización debe ser un valor positivo.\n");
+        return 1;
     }
 
     printf("Monitoreando servicios: ");
