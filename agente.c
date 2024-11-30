@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Número de servicios a monitorear
-    int num_servicios = argc - 2; // Restamos 2 para los nombres de los servicios
+    int num_servicios = (argc > 3) ? argc - 3 : argc - 2;
     printf("Número de servicios a monitorear: %d\n", num_servicios);
 
     char **servicios = argv + 1; // Los servicios comienzan en argv[1]
