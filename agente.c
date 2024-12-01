@@ -25,7 +25,7 @@ void print_usage(const char *prog_name) {
     printf("Uso: %s <servicio1> <servicio2> ... [servicioN]\n", prog_name);
 }
 
-// Función para verificar si una cadena es un número válido
+// Función para verificar si una cadena es un número
 int es_numero(const char *str) {
     if (str == NULL || *str == '\0') {
         return 0;
@@ -157,6 +157,11 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios) 
     }
 }
 
+// Función para verificar si un servicio es un nombre válido
+int es_nombre_servicio_valido(const char *servicio) {
+    return !(es_numero(servicio)); // No debe ser un número
+}
+
 int main(int argc, char *argv[]) {
     // Verificar si hay al menos 2 servicios
     if (argc < 3) { // Al menos 2 servicios + el nombre del programa
@@ -167,6 +172,15 @@ int main(int argc, char *argv[]) {
     // Aseguramos que al menos los dos primeros argumentos sean servicios
     char *servicio1 = argv[1];
     char *servicio2 = argv[2];
+
+    // Verificar que todos los servicios sean válidos
+    for (int i = 1; i < argc; i++) {
+        if (!es_nombre_servicio_valido(argv[i])) {
+            fprintf(stderr, "[ERROR]: '%s' no es un nombre de servicio válido. No debe ser un número.\n", argv[i]);
+            print_usage(argv[0]);
+            return EXIT_FAILURE;
+        }
+    }
 
     // Verificar que haya al menos 2 servicios
     int num_servicios = argc - 1; // Contamos todos los argumentos menos el nombre del programa
