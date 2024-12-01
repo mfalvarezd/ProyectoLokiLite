@@ -6,6 +6,8 @@
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define SERVER_IP "127.0.0.1"  // Dirección IP del servidor
 #define SERVER_PORT 8080       // Puerto del servidor
@@ -67,30 +69,57 @@ int conectar_al_servidor() {
     return sock;
 }
 
+// Función para ejecutar un comando y obtener su resultado
 void ejecutar_comando_y_obtener_resultado(const char *comando, char *resultado, size_t tamaño) {
-    FILE *fp = popen(comando, "r");
-    if (fp == NULL) {
-        perror("[ERROR]: No se pudo ejecutar el comando");
-        strcpy(resultado, "Error al ejecutar comando");
+    int pipefd[2]; // Array para el pipe
+    pid_t pid;
+
+    // Crear un pipe
+    if (pipe(pipefd) == -1) {
+        perror("[ERROR]: No se pudo crear el pipe");
         return;
     }
 
-    // Leer el resultado del comando
-    if (fgets(resultado, tamaño, fp) != NULL) {
-        // Eliminar el salto de línea
-        resultado[strcspn(resultado, "\n")] = 0;
-    } else {
-        strcpy(resultado, "Sin salida");
+    // Crear un nuevo proceso
+    pid = fork();
+    if (pid == -1) {
+        perror("[ERROR]: No se pudo hacer fork");
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return;
     }
 
-    pclose(fp);
+    if (pid == 0) { // Proceso hijo
+        // Redirigir la salida estándar al pipe
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[0]); // Cerrar el lado de lectura del pipe
+        close(pipefd[1]); // No necesitamos el lado de escritura en el hijo
+
+        // Ejecutar el comando
+        char *args[] = {"sh", "-c", (char *)comando, NULL}; // Para usar comandos de shell
+        execv("/bin/sh", args);
+        perror("[ERROR]: execv falló"); // Solo se llega aquí si execv falla
+        exit(EXIT_FAILURE);
+    } else { // Proceso padre
+        close(pipefd[1]); // Cerrar el lado de escritura del pipe
+
+        // Leer del pipe
+        ssize_t bytes_read = read(pipefd[0], resultado, tamaño - 1);
+        if (bytes_read >= 0) {
+            resultado[bytes_read] = '\0'; // Asegurarse de que la cadena esté terminada en null
+        } else {
+            perror("[ERROR]: No se pudo leer del pipe");
+        }
+        close(pipefd[0]); // Cerrar el lado de lectura del pipe
+        wait(NULL); // Esperar a que el proceso hijo termine
+    }
 }
 
 // Función para monitorear servicios y enviar datos al servidor
 void monitorear_servicios(int server_sock, char **servicios, int num_servicios, int tiempo_actualizacion) {
     char buffer[BUFFER_SIZE];
     char resultado[BUFFER_SIZE];
-    
+
     // Array de prioridades
     const char *prioridades[] = {"ALERTA", "ERROR", "AVISO", "INFORMACIÓN"};
     int num_prioridades = sizeof(prioridades) / sizeof(prioridades[0]);
