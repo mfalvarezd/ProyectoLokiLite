@@ -40,7 +40,7 @@ void procesar_datos(const char *datos) {
         printf("[INFO]: Servicio: %s, Alertas: %d, Errores: %d\n", servicio, alertas, errores);
 
         // Umbrales para generar alertas (puedes ajustarlos según sea necesario)
-        if (alertas > 5) {
+        if (errores> 5) {
             char mensaje[512];
             snprintf(mensaje, sizeof(mensaje),
                      "Servicio crítico: %s. Demasiadas alertas (%d).", servicio, alertas);
