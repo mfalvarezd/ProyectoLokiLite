@@ -6,12 +6,12 @@
 #include <pthread.h>
 #include <signal.h>
 
-#define PORT 8080            // Puerto por defecto para el servidor
-#define BUFFER_SIZE 1024     // Tamaño del buffer para recibir datos
-#define MAX_CLIENTS 10       // Máximo número de clientes concurrentes
+#define PORT 8080            // Puerto por defecto
+#define BUFFER_SIZE 1024     // data buffer size
+#define MAX_CLIENTS 10       // Max clients
 
 int keep_running = 1;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; //crear el semaforo
 
 // Función para manejar la señal SIGINT y cerrar el servidor de forma segura
 void handle_sigint(int sig) {
@@ -37,8 +37,6 @@ void procesar_datos(const char *datos) {
 
     printf("[INFO]: Procesando datos: %s\n", datos);
 
-    // Supongamos que los datos están en formato JSON simulado:
-    // { "servicio": "nombre_servicio", "alertas": 5, "errores": 2 }
     char servicio[256];
     int alertas = 0, errores = 0;
 
@@ -60,7 +58,7 @@ void procesar_datos(const char *datos) {
     pthread_mutex_unlock(&mutex);
 }
 
-// Función manejadora para cada cliente conectado
+// Función manejadora para cada cliente
 void *manejar_cliente(void *arg) {
     int client_sock = *(int *)arg;
     free(arg);
@@ -72,7 +70,6 @@ void *manejar_cliente(void *arg) {
         buffer[bytes_leidos] = '\0'; // Asegurar terminación de la cadena
         printf("[INFO]: Datos recibidos: %s\n", buffer);
 
-        // Procesar los datos recibidos
         procesar_datos(buffer);
     }
 
@@ -91,7 +88,7 @@ int main() {
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
 
-    // Manejar SIGINT para detener el servidor de manera segura
+    // CTRTL +C para detener el servidor
     signal(SIGINT, handle_sigint);
 
     // Crear socket
