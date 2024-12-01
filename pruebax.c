@@ -71,8 +71,8 @@ int main() {
         return 1;
     }
 
-    const char *to = "+593986849600";
-    const char *from = "+14155238886";
+    const char *to = "whatsapp:+593986849600";
+    const char *from = "whatsapp:+14155238886";
     const char *body = "Hola, este es un mensaje de prueba desde C";
 
     send_whatsapp_message(account_sid, auth_token, to, from, body);
