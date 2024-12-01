@@ -12,7 +12,7 @@
 #define SERVER_IP "127.0.0.1"  // Dirección IP del servidor
 #define SERVER_PORT 8080       // Puerto del servidor
 #define BUFFER_SIZE 1024       // Tamaño del buffer para enviar datos
-
+#define TIEMPO_ACTUALIZACION_DEFAULT 5 
 int keep_running = 1;
 
 // Función para manejar la señal SIGINT y detener el programa
@@ -36,6 +36,12 @@ int es_numero(const char *str) {
         }
     }
     return 1;
+}
+
+int es_entero_mayor_a_cero(const char *str) {
+    // Verifica si la cadena es un entero mayor a cero
+    int num = atoi(str);
+    return (num > 0);
 }
 
 // Función para conectarse al servidor
@@ -159,21 +165,24 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios, 
 
 int main(int argc, char *argv[]) {
     // Verificar si hay al menos 2 servicios
-    if (argc < 4) { // Al menos 2 servicios + el nombre del programa
+    if (argc < 3) { // Al menos 2 servicios + el nombre del programa
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
 
-    int tiempo_actualizacion = 5; // Valor por defecto
-    int num_servicios = argc - 1; // Inicialmente, todos los argumentos se consideran servicios
+    // Aseguramos que al menos los dos primeros argumentos sean servicios
+    char *servicio1 = argv[1];
+    char *servicio2 = argv[2];
 
-    // Verificar si el último argumento es un número válido (tiempo de actualización)
-    if (es_numero(argv[argc - 1])) {
-        // Si es un número, decrementamos el número de servicios
-        tiempo_actualizacion = atoi(argv[argc - 1]);
-        num_servicios--; // Reducir el número de servicios, ya que el último argumento es un número
-        if (tiempo_actualizacion <= 0) {
-            fprintf(stderr, "[ERROR]: El tiempo de actualización debe ser un valor positivo.\n");
+    // Inicializamos la variable tiempo de actualización
+    int tiempo_actualizacion = TIEMPO_ACTUALIZACION_DEFAULT;
+    int num_servicios = argc - 1; // Inicialmente, todos los argumentos se consideran servicios
+    if (argc > 3) { // Verificar si hay un cuarto argumento para tiempo
+        if (es_entero_mayor_a_cero(argv[argc - 1])) { // Solo verificamos el último argumento
+            tiempo_actualizacion = atoi(argv[argc - 1]);
+            num_servicios--; // Reducimos el conteo de servicios, ya que el último argumento es tiempo
+        } else {
+            printf("El último parámetro debe ser un entero mayor a 0.\n");
             return EXIT_FAILURE;
         }
     }
