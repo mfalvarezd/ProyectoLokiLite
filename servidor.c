@@ -20,8 +20,15 @@ void handle_sigint(int sig) {
 
 // Función para enviar alertas (aquí puedes personalizar el método de envío)
 void enviar_alerta(const char *mensaje) {
-    printf("[ALERTA]: %s\n", mensaje);
-    // Aquí podrías integrar Twilio, Telegram o cualquier otro sistema de notificación.
+     // Escapar el mensaje para usarlo en la línea de comandos
+    char comando[512];
+    snprintf(comando, sizeof(comando), "python enviarAlerta.py \"%s\"", mensaje);
+
+    // Ejecutar el comando
+    int resultado = system(comando);
+    if (resultado == -1) {
+        perror("[ERROR]: No se pudo ejecutar el script de Python");
+    }
 }
 
 // Función para procesar los datos recibidos del agente
@@ -40,7 +47,7 @@ void procesar_datos(const char *datos) {
         printf("[INFO]: Servicio: %s, Alertas: %d, Errores: %d\n", servicio, alertas, errores);
 
 
-        if (errores > 3) {
+        if (errores > 10) {
             char mensaje[512];
             snprintf(mensaje, sizeof(mensaje),
                      "Servicio en error: %s. Demasiados errores (%d).", servicio, errores);
