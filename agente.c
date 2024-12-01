@@ -5,13 +5,21 @@
 #include <sys/wait.h>
 #include <ctype.h>
 #include <string.h>
+#include <pthread.h>
 
 int keep_running = 1;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Niveles de prioridad
+const char *prioridades[] = {"alert", "err", "notice", "info", "debug"};
+#define NUM_PRIORIDADES 5
+
+// Función para manejar la señal SIGINT
 void handle_sigint(int sig) {
     keep_running = 0;
 }
 
+// Función para imprimir el uso del programa
 void print_usage(const char *prog_name) {
     printf("Uso: %s <servicio1> <servicio2> [servicio3] ... [servicioN] [tiempo_actualizacion]\n", prog_name);
 }
@@ -27,6 +35,78 @@ int es_numero(const char *str) {
         }
     }
     return 1;
+}
+
+// Estructura de datos para cada hilo
+typedef struct {
+    const char *servicio;
+    int tiempo_actualizacion;
+} ServicioHilo;
+
+// Función para enviar alertas usando Twilio
+void enviar_alerta(const char *servicio, const char *mensaje) {
+    char comando[512];
+    snprintf(comando, sizeof(comando),
+             "curl -X POST https://api.twilio.com/2010-04-01/Accounts/<ACCOUNT_SID>/Messages.json "
+             "-u <ACCOUNT_SID>:<AUTH_TOKEN> "
+             "-d 'To=<DESTINO>' -d 'From=<ORIGEN>' -d 'Body=Alerta! Servicio %s: %s.'",
+             servicio, mensaje);
+    system(comando);
+}
+
+// Función de monitoreo para un servicio
+void *monitorear_servicio(void *arg) {
+    ServicioHilo *data = (ServicioHilo *)arg;
+    const char *servicio = data->servicio;
+    int tiempo_actualizacion = data->tiempo_actualizacion;
+
+    int conteo_prioridades[NUM_PRIORIDADES] = {0};
+
+    while (keep_running) {
+        pthread_mutex_lock(&mutex);
+        printf("\nMonitoreando servicio: %s\n", servicio);
+
+        for (int p = 0; p < NUM_PRIORIDADES; p++) {
+            // Comando journalctl para filtrar por prioridad
+            int pipefd[2];
+            if (pipe(pipefd) == -1) {
+                perror("Error creando pipe");
+                pthread_mutex_unlock(&mutex);
+                return NULL;
+            }
+
+            pid_t pid = fork();
+            if (pid == 0) { // Proceso hijo
+                close(pipefd[0]); // Cierra lectura
+                dup2(pipefd[1], STDOUT_FILENO); // Redirige stdout al pipe
+                char *args[] = {"journalctl", "-p", prioridades[p], "-u", (char *)servicio, "-n", "10", NULL};
+                execvp(args[0], args);
+                perror("Error ejecutando execvp");
+                exit(1);
+            } else if (pid > 0) { // Proceso padre
+                close(pipefd[1]); // Cierra escritura
+                char buffer[1024];
+                ssize_t bytes_leidos = read(pipefd[0], buffer, sizeof(buffer) - 1);
+                if (bytes_leidos > 0) {
+                    buffer[bytes_leidos] = '\0';
+                    conteo_prioridades[p]++;
+                    printf("Prioridad %s: %d mensajes\n", prioridades[p], conteo_prioridades[p]);
+                }
+                waitpid(pid, NULL, 0); // Espera al hijo
+            }
+        }
+
+        // Verifica si se supera un threshold (ejemplo: 5 alertas)
+      //  if (conteo_prioridades[0] > 5) {
+       //     printf("¡Alerta crítica en servicio %s! Enviando notificación...\n", servicio);
+       //     enviar_alerta(servicio, "Demasiadas alertas críticas");
+      //  }
+
+        pthread_mutex_unlock(&mutex);
+        sleep(tiempo_actualizacion);
+    }
+
+    return NULL;
 }
 
 int main(int argc, char *argv[]) {
@@ -59,31 +139,23 @@ int main(int argc, char *argv[]) {
 
     signal(SIGINT, handle_sigint);
 
-    // Bucle de monitoreo
-    while (keep_running) {
-        for (int i = 0; i < num_servicios; i++) {
-            // Comando para journalctl del servicio actual
-            char *args[] = {"journalctl", "-u", servicios[i], "-n", "10", NULL};
-            printf("Ejecutando comando para servicio: %s\n", servicios[i]);
+    // Crear hilos para cada servicio
+    pthread_t hilos[num_servicios];
+    ServicioHilo datos_hilos[num_servicios];
 
-            pid_t pid = fork();
-            if (pid == 0) { // Proceso hijo
-                execvp(args[0], args);
-                perror("Error ejecutando execvp");
-                exit(1);
-            } else if (pid < 0) {
-                perror("Error al crear proceso hijo");
-                return 1;
-            }
+    for (int i = 0; i < num_servicios; i++) {
+        datos_hilos[i].servicio = servicios[i];
+        datos_hilos[i].tiempo_actualizacion = tiempo_actualizacion;
 
-            int status;
-            waitpid(pid, &status, 0); // Espera a que termine el hijo
-            if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-                fprintf(stderr, "El comando journalctl para %s terminó con error.\n", servicios[i]);
-            }
+        if (pthread_create(&hilos[i], NULL, monitorear_servicio, &datos_hilos[i]) != 0) {
+            perror("Error creando hilo");
+            return 1;
         }
+    }
 
-        sleep(tiempo_actualizacion); // Espera antes de la siguiente actualización
+    // Esperar a que terminen los hilos
+    for (int i = 0; i < num_servicios; i++) {
+        pthread_join(hilos[i], NULL);
     }
 
     printf("Monitoreo detenido.\n");
