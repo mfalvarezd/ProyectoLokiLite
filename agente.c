@@ -12,7 +12,7 @@
 #define SERVER_IP "127.0.0.1"  // Dirección IP del servidor
 #define SERVER_PORT 8080       // Puerto del servidor
 #define BUFFER_SIZE 1024       // Tamaño del buffer para enviar datos
-#define TIEMPO_ACTUALIZACION_DEFAULT 5 
+#define TIEMPO_ACTUALIZACION 5 // Tiempo de actualización constante
 int keep_running = 1;
 
 // Función para manejar la señal SIGINT y detener el programa
@@ -22,7 +22,7 @@ void handle_sigint(int sig) {
 
 // Función para imprimir el uso correcto del programa
 void print_usage(const char *prog_name) {
-    printf("Uso: %s <servicio1> <servicio2> ... [servicioN] [tiempo_actualizacion]\n", prog_name);
+    printf("Uso: %s <servicio1> <servicio2> ... [servicioN]\n", prog_name);
 }
 
 // Función para verificar si una cadena es un número válido
@@ -36,12 +36,6 @@ int es_numero(const char *str) {
         }
     }
     return 1;
-}
-
-int es_entero_mayor_a_cero(const char *str) {
-    // Verifica si la cadena es un entero mayor a cero
-    int num = atoi(str);
-    return (num > 0);
 }
 
 // Función para conectarse al servidor
@@ -122,7 +116,7 @@ void ejecutar_comando_y_obtener_resultado(const char *comando, char *resultado, 
 }
 
 // Función para monitorear servicios y enviar datos al servidor
-void monitorear_servicios(int server_sock, char **servicios, int num_servicios, int tiempo_actualizacion) {
+void monitorear_servicios(int server_sock, char **servicios, int num_servicios) {
     char buffer[BUFFER_SIZE];
     char resultado[BUFFER_SIZE];
 
@@ -159,7 +153,7 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios, 
             }
         }
 
-        sleep(tiempo_actualizacion); // Esperar el tiempo de actualización
+        sleep(TIEMPO_ACTUALIZACION); // Esperar el tiempo de actualización constante
     }
 }
 
@@ -174,47 +168,9 @@ int main(int argc, char *argv[]) {
     char *servicio1 = argv[1];
     char *servicio2 = argv[2];
 
-    // Inicializamos la variable tiempo de actualización
-    int tiempo_actualizacion = TIEMPO_ACTUALIZACION_DEFAULT;
-    int num_servicios = argc - 1; // Inicialmente, todos los argumentos se consideran servicios
-    if (argc > 3) { // Verificar si hay un cuarto argumento para tiempo
-        if (es_entero_mayor_a_cero(argv[argc - 1])) { // Solo verificamos el último argumento
-            tiempo_actualizacion = atoi(argv[argc - 1]);
-            num_servicios--; // Reducimos el conteo de servicios, ya que el último argumento es tiempo
-        } else {
-            printf("El último parámetro debe ser un entero mayor a 0.\n");
-            return EXIT_FAILURE;
-        }
-    }
-
-    // Verificar que haya al menos 2 servicios después de considerar el tiempo de actualización
+    // Verificar que haya al menos 2 servicios
+    int num_servicios = argc - 1; // Contamos todos los argumentos menos el nombre del programa
     if (num_servicios < 2) {
         fprintf(stderr, "[ERROR]: Se requieren al menos dos servicios para monitorear.\n");
         print_usage(argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    char **servicios = argv + 1; // Los servicios comienzan en argv[1]
-
-    printf("[INFO]: Número de servicios a monitorear: %d\n", num_servicios);
-    printf("[INFO]: Servicios a monitorear: ");
-    for (int i = 0; i < num_servicios; i++) {
-        printf("%s%s", servicios[i], (i < num_servicios - 1) ? ", " : "\n");
-    }
-    printf("[INFO]: Tiempo de actualización: %d segundos\n", tiempo_actualizacion);
-
-    // Manejar la señal SIGINT para detener el programa
-    signal(SIGINT, handle_sigint);
-
-    // Conectar al servidor
-    int server_sock = conectar_al_servidor();
-
-    // Monitorear servicios y enviar datos al servidor
-    monitorear_servicios(server_sock, servicios, num_servicios, tiempo_actualizacion);
-
-    // Cerrar el socket al finalizar
-    close(server_sock);
-    printf("[INFO]: Monitoreo detenido. Conexión cerrada.\n");
-
-    return EXIT_SUCCESS;
-}
+        return EXIT_FAILUR
