@@ -19,8 +19,10 @@ void load_env(const char *filename, char *account_sid, char *auth_token) {
         if (key && value) {
             if (strcmp(key, "ACCOUNT_SID") == 0) {
                 strncpy(account_sid, value, 128);
+                account_sid[127] = '\0'; // Asegurar que esté terminado en null
             } else if (strcmp(key, "AUTH_TOKEN") == 0) {
                 strncpy(auth_token, value, 128);
+                auth_token[127] = '\0'; // Asegurar que esté terminado en null
             }
         }
     }
@@ -61,6 +63,7 @@ void send_whatsapp_message(const char *account_sid, const char *auth_token) {
         curl_easy_setopt(curl, CURLOPT_POST, 1L);
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postfields);
         curl_easy_setopt(curl, CURLOPT_USERPWD, credentials);
+        curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC); // Autenticación básica
 
         // Realizar la solicitud
         res = curl_easy_perform(curl);
