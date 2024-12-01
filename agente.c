@@ -173,4 +173,30 @@ int main(int argc, char *argv[]) {
     if (num_servicios < 2) {
         fprintf(stderr, "[ERROR]: Se requieren al menos dos servicios para monitorear.\n");
         print_usage(argv[0]);
-        return EXIT_FAILUR
+        return EXIT_FAILURE;
+    }
+
+    char **servicios = argv + 1; // Los servicios comienzan en argv[1]
+
+    printf("[INFO]: Número de servicios a monitorear: %d\n", num_servicios);
+    printf("[INFO]: Servicios a monitorear: ");
+    for (int i = 0; i < num_servicios; i++) {
+        printf("%s%s", servicios[i], (i < num_servicios - 1) ? ", " : "\n");
+    }
+    printf("[INFO]: Tiempo de actualización: %d segundos\n", TIEMPO_ACTUALIZACION);
+
+    // Manejar la señal SIGINT para detener el programa
+    signal(SIGINT, handle_sigint);
+
+    // Conectar al servidor
+    int server_sock = conectar_al_servidor();
+
+    // Monitorear servicios y enviar datos al servidor
+    monitorear_servicios(server_sock, servicios, num_servicios);
+
+    // Cerrar el socket al finalizar
+    close(server_sock);
+    printf("[INFO]: Monitoreo detenido. Conexión cerrada.\n");
+
+    return EXIT_SUCCESS;
+}
