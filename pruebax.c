@@ -41,7 +41,7 @@ void send_whatsapp_message(const char *account_sid, const char *auth_token, cons
 
         char postfields[512];
         snprintf(postfields, sizeof(postfields),
-                 "To=whatsapp:%s&From=whatsapp:%s&Body=%s",
+                 "To=whatsapp:+%s&From=whatsapp:+%s&Body=%s",
                  to, from, body);
 
         curl_easy_setopt(curl, CURLOPT_URL, url);
@@ -71,8 +71,8 @@ int main() {
         return 1;
     }
 
-    const char *to = "+593986849600";
-    const char *from = "+14155238886";
+    const char *to = "593986849600";
+    const char *from = "14155238886";
     const char *body = "Hola, este es un mensaje de prueba desde C";
 
     send_whatsapp_message(account_sid, auth_token, to, from, body);
