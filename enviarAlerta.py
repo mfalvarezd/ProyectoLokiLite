@@ -3,13 +3,9 @@ import urllib.parse
 import base64
 import os
 import argparse
-import ssl  # Importar el módulo ssl
+import ssl
 
-# Resto de tu código...
-
-# Crear la conexión con verificación de certificado deshabilitada
-context = ssl._create_unverified_context()  # Crear un contexto SSL sin verificación
-# Función para cargar las credenciales desde un archivo .env
+context = ssl._create_unverified_context()
 def load_env(filename):
     credentials = {}
     with open(filename, 'r') as file:
@@ -18,10 +14,8 @@ def load_env(filename):
             credentials[key] = value
     return credentials
 
-# Configuración de argumentos
 parser = argparse.ArgumentParser(description='Enviar un mensaje de WhatsApp a través de Twilio.')
 parser.add_argument('message', type=str, help='El mensaje a enviar')
-
 args = parser.parse_args()
 
 # Cargar las credenciales
@@ -40,17 +34,14 @@ data = {
     'Body': args.message  # Usar el mensaje recibido como parámetro
 }
 
-# Codificar los datos
+
 encoded_data = urllib.parse.urlencode(data)
-
-# Crear la conexión
 conn = http.client.HTTPSConnection(url, context=context)  # Pasar el contexto a la conexión
-
-# Configurar la autenticación básica
+#autenticación básica
 credentials = f"{account_sid}:{auth_token}"
 encoded_credentials = base64.b64encode(credentials.encode('utf-8')).decode('utf-8')
 
-# Configurar los encabezados
+#encabezados
 headers = {
     'Authorization': f'Basic {encoded_credentials}',
     'Content-Type': 'application/x-www-form-urlencoded'
@@ -59,7 +50,7 @@ headers = {
 # Realizar la solicitud POST
 conn.request('POST', endpoint, body=encoded_data, headers=headers)
 
-# Obtener la respuesta
+#respuesta
 response = conn.getresponse()
 response_data = response.read().decode('utf-8')
 
@@ -71,6 +62,5 @@ else:
     print("Error al enviar el mensaje")
     print("Código de estado:", response.status)
     print("Respuesta:", response_data)
-
-# Cerrar la conexión
+# Cerrar conexión
 conn.close()
