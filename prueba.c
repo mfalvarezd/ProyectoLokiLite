@@ -135,7 +135,7 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios, 
             // Contar las diferentes prioridades
             for (int j = 0; j < num_prioridades; j++) {
                 char comando[BUFFER_SIZE];
-                snprintf(comando, sizeof(comando), "journalctl -u %s -p '%s'", servicios[i], prioridades[j]);
+                snprintf(comando, sizeof(comando), "journalctl -u %s -p '%s' | wc -l", servicios[i], prioridades[j]);
                 ejecutar_comando_y_obtener_resultado(comando, resultado, sizeof(resultado));
                 conteos[j] = atoi(resultado);
             }
@@ -158,7 +158,8 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios, 
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 3) { // Debe haber al menos 2 servicios
+    // Verificar si hay al menos 2 servicios
+    if (argc < 4) { // Al menos 2 servicios + el nombre del programa
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
@@ -167,13 +168,21 @@ int main(int argc, char *argv[]) {
     int num_servicios = argc - 1; // Inicialmente, todos los argumentos se consideran servicios
 
     // Verificar si el último argumento es un número válido (tiempo de actualización)
-    if (argc > 3 && es_numero(argv[argc - 1])) {
+    if (es_numero(argv[argc - 1])) {
+        // Si es un número, decrementamos el número de servicios
         tiempo_actualizacion = atoi(argv[argc - 1]);
-        num_servicios--; // Reducir el número de servicios, ya que el último argumento no es un servicio
+        num_servicios--; // Reducir el número de servicios, ya que el último argumento es un número
         if (tiempo_actualizacion <= 0) {
             fprintf(stderr, "[ERROR]: El tiempo de actualización debe ser un valor positivo.\n");
             return EXIT_FAILURE;
         }
+    }
+
+    // Verificar que haya al menos 2 servicios después de considerar el tiempo de actualización
+    if (num_servicios < 2) {
+        fprintf(stderr, "[ERROR]: Se requieren al menos dos servicios para monitorear.\n");
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
     }
 
     char **servicios = argv + 1; // Los servicios comienzan en argv[1]
