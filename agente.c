@@ -4,8 +4,6 @@
 #include <signal.h>
 #include <string.h>
 #include <ctype.h>
-#include <arpa/inet.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
@@ -15,17 +13,17 @@
 #define TIEMPO_ACTUALIZACION 5 // Tiempo de actualización constante
 int keep_running = 1;
 
-// Función para manejar la señal SIGINT y detener el programa
+// CTRL+C PARA DETENER
 void handle_sigint(int sig) {
     keep_running = 0;
 }
 
-// Función para imprimir el uso correcto del programa
+//help
 void print_usage(const char *prog_name) {
     printf("Uso: %s <servicio1> <servicio2> ... [servicioN]\n", prog_name);
 }
 
-// Función para verificar si una cadena es un número
+//verificar parametro es un numero
 int es_numero(const char *str) {
     if (str == NULL || *str == '\0') {
         return 0;
@@ -38,40 +36,38 @@ int es_numero(const char *str) {
     return 1;
 }
 
-// Función para conectarse al servidor
+
 int conectar_al_servidor() {
     int sock;
     struct sockaddr_in server_addr;
 
-    // Crear el socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-        perror("[ERROR]: No se pudo crear el socket");
+        perror("[ERROR]: No se puede crear el socket");
         exit(EXIT_FAILURE);
     }
 
-    // Configurar la dirección del servidor
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(SERVER_PORT);
     if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
-        perror("[ERROR]: Dirección IP no válida");
+        perror("[ERROR]: Dirección IP no valida");
         close(sock);
         exit(EXIT_FAILURE);
     }
 
-    // Conectar al servidor
+    // Manejar coneccion al servidor
     if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
-        perror("[ERROR]: No se pudo conectar al servidor");
+        perror("[ERROR]: No se puede conectar al servidor");
         close(sock);
-        exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE); // en caso de falla se terminara la ejecucion
     }
 
-    printf("[INFO]: Conexión establecida con el servidor %s:%d\n", SERVER_IP, SERVER_PORT);
+    printf("[INFO]: Conexion satisfactoria con el servidor %s:%d\n", SERVER_IP, SERVER_PORT);
     return sock;
 }
 
-// Función para ejecutar un comando y obtener su resultado
-void ejecutar_comando_y_obtener_resultado(const char *comando, char *resultado, size_t tamaño) {
-    int pipefd[2]; // Array para el pipe
+
+void ejecutarExec(const char *comando, char *resultado, size_t tamaño) {
+    int pipefd[2]; //definir arreglo pipe 0 de lecutra 1 de escritura
     pid_t pid;
 
     // Crear un pipe
@@ -92,13 +88,13 @@ void ejecutar_comando_y_obtener_resultado(const char *comando, char *resultado, 
     if (pid == 0) { // Proceso hijo
         // Redirigir la salida estándar al pipe
         dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[0]); // Cerrar el lado de lectura del pipe
-        close(pipefd[1]); // No necesitamos el lado de escritura en el hijo
+        close(pipefd[0]); 
+        close(pipefd[1]); 
 
         // Ejecutar el comando
         char *args[] = {"sh", "-c", (char *)comando, NULL}; // Para usar comandos de shell
-        execv("/bin/sh", args);
-        perror("[ERROR]: execv falló"); // Solo se llega aquí si execv falla
+        execv("/bin/sh", args);// se ejecutan los argumentos que reciva execv en forma de arreglo
+        perror("[ERROR]: execv falló"); // el excv fallo
         exit(EXIT_FAILURE);
     } else { // Proceso padre
         close(pipefd[1]); // Cerrar el lado de escritura del pipe
@@ -106,7 +102,7 @@ void ejecutar_comando_y_obtener_resultado(const char *comando, char *resultado, 
         // Leer del pipe
         ssize_t bytes_read = read(pipefd[0], resultado, tamaño - 1);
         if (bytes_read >= 0) {
-            resultado[bytes_read] = '\0'; // Asegurarse de que la cadena esté terminada en null
+            resultado[bytes_read] = '\0'; //la cadena existe y se pudo leer
         } else {
             perror("[ERROR]: No se pudo leer del pipe");
         }
@@ -115,7 +111,7 @@ void ejecutar_comando_y_obtener_resultado(const char *comando, char *resultado, 
     }
 }
 
-// Función para monitorear servicios y enviar datos al servidor
+// Función de monitoreo y envio de datos al server
 void monitorear_servicios(int server_sock, char **servicios, int num_servicios) {
     char buffer[BUFFER_SIZE];
     char resultado[BUFFER_SIZE];
@@ -136,11 +132,11 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios) 
             for (int j = 0; j < num_prioridades; j++) {
                 char comando[BUFFER_SIZE];
                 snprintf(comando, sizeof(comando), "journalctl -u %s -p '%s' | wc -l", servicios[i], prioridades[j]);
-                ejecutar_comando_y_obtener_resultado(comando, resultado, sizeof(resultado));
+                ejecutarExec(comando, resultado, sizeof(resultado));
                 conteos[j] = atoi(resultado);
             }
 
-            // Crear mensaje en formato JSON
+            // Crear mensaje en formato JSON DASHBOARD
             snprintf(buffer, sizeof(buffer),
                      "{ \"servicio\": \"%s\", \"alertas\": %d, \"errores\": %d, \"avisos\": %d, \"informacion\": %d }",
                      servicios[i], conteos[0], conteos[1], conteos[2], conteos[3]);
@@ -157,7 +153,7 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios) 
     }
 }
 
-// Función para verificar si un servicio es un nombre válido
+// verificar si solo recibe strrings como parametros
 int es_nombre_servicio_valido(const char *servicio) {
     return !(es_numero(servicio)); // No debe ser un número
 }
@@ -175,7 +171,7 @@ int main(int argc, char *argv[]) {
 
     // Verificar que todos los servicios sean válidos
     for (int i = 1; i < argc; i++) {
-        if (!es_nombre_servicio_valido(argv[i])) {
+        if (es_numero(argv[i])) {
             fprintf(stderr, "[ERROR]: '%s' no es un nombre de servicio válido. No debe ser un número.\n", argv[i]);
             print_usage(argv[0]);
             return EXIT_FAILURE;
@@ -183,21 +179,21 @@ int main(int argc, char *argv[]) {
     }
 
     // Verificar que haya al menos 2 servicios
-    int num_servicios = argc - 1; // Contamos todos los argumentos menos el nombre del programa
+    int num_servicios = argc - 1;
     if (num_servicios < 2) {
         fprintf(stderr, "[ERROR]: Se requieren al menos dos servicios para monitorear.\n");
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
 
-    char **servicios = argv + 1; // Los servicios comienzan en argv[1]
+    char **servicios = argv + 1;
 
-    printf("[INFO]: Número de servicios a monitorear: %d\n", num_servicios);
+    printf("[INFO]: Numero de servicios a monitorear: %d\n", num_servicios);
     printf("[INFO]: Servicios a monitorear: ");
     for (int i = 0; i < num_servicios; i++) {
         printf("%s%s", servicios[i], (i < num_servicios - 1) ? ", " : "\n");
     }
-    printf("[INFO]: Tiempo de actualización: %d segundos\n", TIEMPO_ACTUALIZACION);
+    printf("[INFO]: Tiempo de actualizacion: %d segundos\n", TIEMPO_ACTUALIZACION);
 
     // Manejar la señal SIGINT para detener el programa
     signal(SIGINT, handle_sigint);
