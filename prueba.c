@@ -121,7 +121,7 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios, 
     char resultado[BUFFER_SIZE];
 
     // Array de prioridades
-    const char *prioridades[] = {"ALERTA", "ERROR", "AVISO", "INFORMACIÓN"};
+    const char *prioridades[] = {"alert", "err", "warning", "info"};
     int num_prioridades = sizeof(prioridades) / sizeof(prioridades[0]);
 
     while (keep_running) {
