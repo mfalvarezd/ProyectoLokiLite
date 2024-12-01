@@ -3,137 +3,139 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
-#include <pthread.h>
+#include <ctype.h>
 #include <arpa/inet.h>
+#include <pthread.h>
+
+#define SERVER_IP "127.0.0.1"  // Dirección IP del servidor
+#define SERVER_PORT 8080       // Puerto del servidor
+#define BUFFER_SIZE 1024       // Tamaño del buffer para enviar datos
 
 int keep_running = 1;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Niveles de prioridad
-const char *prioridades[] = {"alert", "err", "notice", "info", "debug"};
-#define NUM_PRIORIDADES 5
-
-// Función para manejar la señal SIGINT
+// Función para manejar la señal SIGINT y detener el programa
 void handle_sigint(int sig) {
     keep_running = 0;
 }
 
-// Estructura para datos del hilo
-typedef struct {
-    const char *servicio;
-    int tiempo_actualizacion;
-    const char *ip_servidor;
-    int puerto;
-} ServicioHilo;
+// Función para imprimir el uso correcto del programa
+void print_usage(const char *prog_name) {
+    printf("Uso: %s <servicio1> <servicio2> ... [servicioN] [tiempo_actualizacion]\n", prog_name);
+}
 
-// Función para enviar datos al servidor
-void enviar_datos_al_servidor(const char *ip_servidor, int puerto, const char *datos) {
-    int sockfd;
+// Función para verificar si una cadena es un número válido
+int es_numero(const char *str) {
+    if (str == NULL || *str == '\0') {
+        return 0;
+    }
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (!isdigit(str[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+// Función para conectarse al servidor
+int conectar_al_servidor() {
+    int sock;
     struct sockaddr_in server_addr;
 
-    // Crear socket
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Error al crear el socket");
-        return;
+    // Crear el socket
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+        perror("[ERROR]: No se pudo crear el socket");
+        exit(EXIT_FAILURE);
     }
 
+    // Configurar la dirección del servidor
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(puerto);
-
-    // Convertir IP a formato binario
-    if (inet_pton(AF_INET, ip_servidor, &server_addr.sin_addr) <= 0) {
-        perror("Dirección IP inválida o no soportada");
-        close(sockfd);
-        return;
+    server_addr.sin_port = htons(SERVER_PORT);
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0) {
+        perror("[ERROR]: Dirección IP no válida");
+        close(sock);
+        exit(EXIT_FAILURE);
     }
 
     // Conectar al servidor
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Error al conectar con el servidor");
-        close(sockfd);
-        return;
+    if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+        perror("[ERROR]: No se pudo conectar al servidor");
+        close(sock);
+        exit(EXIT_FAILURE);
     }
 
-    // Enviar datos
-    send(sockfd, datos, strlen(datos), 0);
-    close(sockfd);
+    printf("[INFO]: Conexión establecida con el servidor %s:%d\n", SERVER_IP, SERVER_PORT);
+    return sock;
 }
 
-// Función de monitoreo
-void *monitorear_servicio(void *arg) {
-    ServicioHilo *data = (ServicioHilo *)arg;
-    const char *servicio = data->servicio;
-    int tiempo_actualizacion = data->tiempo_actualizacion;
-    const char *ip_servidor = data->ip_servidor;
-    int puerto = data->puerto;
-
-    int conteo_prioridades[NUM_PRIORIDADES] = {0};
+// Función para monitorear servicios y enviar datos al servidor
+void monitorear_servicios(int server_sock, char **servicios, int num_servicios, int tiempo_actualizacion) {
+    char buffer[BUFFER_SIZE];
 
     while (keep_running) {
-        pthread_mutex_lock(&mutex);
-        printf("Monitoreando servicio: %s\n", servicio);
+        for (int i = 0; i < num_servicios; i++) {
+            printf("[INFO]: Monitoreando servicio: %s\n", servicios[i]);
 
-        for (int p = 0; p < NUM_PRIORIDADES; p++) {
-            // Comando journalctl para filtrar por prioridad
-            char comando[256];
-            snprintf(comando, sizeof(comando), "journalctl -p %s -u %s -n 10", prioridades[p], servicio);
-            FILE *pipe = popen(comando, "r");
-            if (pipe) {
-                char buffer[1024];
-                while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
-                    conteo_prioridades[p]++;
-                }
-                pclose(pipe);
+            // Simular recolección de datos con journalctl
+            int alertas = rand() % 10; // Número aleatorio de alertas (simulación)
+            int errores = rand() % 5; // Número aleatorio de errores (simulación)
+
+            // Crear mensaje en formato JSON
+            snprintf(buffer, sizeof(buffer),
+                     "{ \"servicio\": \"%s\", \"alertas\": %d, \"errores\": %d }",
+                     servicios[i], alertas, errores);
+
+            // Enviar los datos al servidor
+            if (send(server_sock, buffer, strlen(buffer), 0) == -1) {
+                perror("[ERROR]: No se pudieron enviar los datos al servidor");
+            } else {
+                printf("[INFO]: Datos enviados: %s\n", buffer);
             }
         }
 
-        // Crear un mensaje para enviar al servidor
-        char mensaje[512];
-        snprintf(mensaje, sizeof(mensaje),
-                 "{ \"servicio\": \"%s\", \"alertas\": %d, \"errores\": %d }",
-                 servicio, conteo_prioridades[0], conteo_prioridades[1]);
-
-        // Enviar datos al servidor
-        enviar_datos_al_servidor(ip_servidor, puerto, mensaje);
-        pthread_mutex_unlock(&mutex);
-
-        sleep(tiempo_actualizacion);
+        sleep(tiempo_actualizacion); // Esperar el tiempo de actualización
     }
-
-    return NULL;
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 5) {
-        printf("Uso: %s <IP_servidor> <puerto> <tiempo_actualizacion> <servicio1> [servicio2]...\n", argv[0]);
-        return 1;
+    if (argc < 3) { // Debe haber al menos 2 servicios
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
     }
 
-    const char *ip_servidor = argv[1];
-    int puerto = atoi(argv[2]);
-    int tiempo_actualizacion = atoi(argv[3]);
-    int num_servicios = argc - 4;
+    int tiempo_actualizacion = 5; // Valor por defecto
+    int num_servicios = argc - 1; // Inicialmente, todos los argumentos se consideran servicios
 
-    signal(SIGINT, handle_sigint);
-
-    pthread_t hilos[num_servicios];
-    ServicioHilo datos_hilos[num_servicios];
-
-    for (int i = 0; i < num_servicios; i++) {
-        datos_hilos[i].servicio = argv[i + 4];
-        datos_hilos[i].tiempo_actualizacion = tiempo_actualizacion;
-        datos_hilos[i].ip_servidor = ip_servidor;
-        datos_hilos[i].puerto = puerto;
-
-        if (pthread_create(&hilos[i], NULL, monitorear_servicio, &datos_hilos[i]) != 0) {
-            perror("Error creando hilo");
-            return 1;
+    // Verificar si el último argumento es un número válido (tiempo de actualización)
+    if (argc > 3 && es_numero(argv[argc - 1])) {
+        tiempo_actualizacion = atoi(argv[argc - 1]);
+        num_servicios--; // Reducir el número de servicios, ya que el último argumento no es un servicio
+        if (tiempo_actualizacion <= 0) {
+            fprintf(stderr, "[ERROR]: El tiempo de actualización debe ser un valor positivo.\n");
+            return EXIT_FAILURE;
         }
     }
 
-    for (int i = 0; i < num_servicios; i++) {
-        pthread_join(hilos[i], NULL);
-    }
+    char **servicios = argv + 1; // Los servicios comienzan en argv[1]
 
-    return 0;
+    printf("[INFO]: Número de servicios a monitorear: %d\n", num_servicios);
+    printf("[INFO]: Servicios a monitorear: ");
+    for (int i = 0; i < num_servicios; i++) {
+        printf("%s%s", servicios[i], (i < num_servicios - 1) ? ", " : "\n");
+    }
+    printf("[INFO]: Tiempo de actualización: %d segundos\n", tiempo_actualizacion);
+
+    // Manejar la señal SIGINT para detener el programa
+    signal(SIGINT, handle_sigint);
+
+    // Conectar al servidor
+    int server_sock = conectar_al_servidor();
+
+    // Monitorear servicios y enviar datos al servidor
+    monitorear_servicios(server_sock, servicios, num_servicios, tiempo_actualizacion);
+
+    // Cerrar el socket al finalizar
+    close(server_sock);
+    printf("[INFO]: Monitoreo detenido. Conexión cerrada.\n");
+
+    return EXIT_SUCCESS;
 }
