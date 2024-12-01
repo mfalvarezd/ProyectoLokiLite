@@ -67,17 +67,45 @@ int conectar_al_servidor() {
     return sock;
 }
 
+void ejecutar_comando_y_obtener_resultado(const char *comando, char *resultado, size_t tamaño) {
+    FILE *fp = popen(comando, "r");
+    if (fp == NULL) {
+        perror("[ERROR]: No se pudo ejecutar el comando");
+        strcpy(resultado, "Error al ejecutar comando");
+        return;
+    }
+
+    // Leer el resultado del comando
+    if (fgets(resultado, tamaño, fp) != NULL) {
+        // Eliminar el salto de línea
+        resultado[strcspn(resultado, "\n")] = 0;
+    } else {
+        strcpy(resultado, "Sin salida");
+    }
+
+    pclose(fp);
+}
+
 // Función para monitorear servicios y enviar datos al servidor
 void monitorear_servicios(int server_sock, char **servicios, int num_servicios, int tiempo_actualizacion) {
     char buffer[BUFFER_SIZE];
+    char resultado[BUFFER_SIZE];
 
     while (keep_running) {
         for (int i = 0; i < num_servicios; i++) {
             printf("[INFO]: Monitoreando servicio: %s\n", servicios[i]);
 
-            // Simular recolección de datos con journalctl
-            int alertas = rand() % 10; // Número aleatorio de alertas (simulación)
-            int errores = rand() % 5; // Número aleatorio de errores (simulación)
+            // Comando para contar alertas
+            char comando_alertas[BUFFER_SIZE];
+            snprintf(comando_alertas, sizeof(comando_alertas), "journalctl -u %s --no-pager | grep -c 'ALERTA'", servicios[i]);
+            ejecutar_comando_y_obtener_resultado(comando_alertas, resultado, sizeof(resultado));
+            int alertas = atoi(resultado);
+
+            // Comando para contar errores
+            char comando_errores[BUFFER_SIZE];
+            snprintf(comando_errores, sizeof(comando_errores), "journalctl -u %s --no-pager | grep -c 'ERROR'", servicios[i]);
+            ejecutar_comando_y_obtener_resultado(comando_errores, resultado, sizeof(resultado));
+            int errores = atoi(resultado);
 
             // Crear mensaje en formato JSON
             snprintf(buffer, sizeof(buffer),
