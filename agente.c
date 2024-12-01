@@ -4,6 +4,8 @@
 #include <signal.h>
 #include <string.h>
 #include <ctype.h>
+#include <arpa/inet.h>
+#include <pthread.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
