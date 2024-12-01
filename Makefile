@@ -17,7 +17,7 @@ $(SERVIDOR): servidor.o
 
 # Compilar el ejecutable de hydra
 $(PRUEBA): prueba_stress.o
-	$(CC) $(CFLAGS) -o $(PRUEBA) ejecutaprueba_stress
+	$(CC) $(CFLAGS) -o $(PRUEBA) prueba_stress.o
 
 # Regla para compilar el agente objeto
 agente.o: agente.c
