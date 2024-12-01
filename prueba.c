@@ -135,7 +135,7 @@ void monitorear_servicios(int server_sock, char **servicios, int num_servicios, 
             // Contar las diferentes prioridades
             for (int j = 0; j < num_prioridades; j++) {
                 char comando[BUFFER_SIZE];
-                snprintf(comando, sizeof(comando), "journalctl -u %s --no-pager | grep -c '%s'", servicios[i], prioridades[j]);
+                snprintf(comando, sizeof(comando), "journalctl -u %s -p '%s'", servicios[i], prioridades[j]);
                 ejecutar_comando_y_obtener_resultado(comando, resultado, sizeof(resultado));
                 conteos[j] = atoi(resultado);
             }
