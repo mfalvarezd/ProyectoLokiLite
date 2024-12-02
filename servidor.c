@@ -18,7 +18,7 @@ void handle_sigint(int sig) {
     keep_running = 0;
 }
 
-// Función para enviar alertas (aquí puedes personalizar el método de envío)
+// Función para enviar alertas
 void enviar_alerta(const char *mensaje) {
      // Escapar el mensaje para usarlo en la línea de comandos
     char comando[512];

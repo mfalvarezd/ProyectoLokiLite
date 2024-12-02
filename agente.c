@@ -69,7 +69,7 @@ int conectar_al_servidor() {
 
 
 void ejecutarExec(const char *comando, char *resultado, size_t tamaño) {
-    int pipefd[2]; //definir arreglo pipe 0 de lecutra 1 de escritura
+    int pipefd[2]; //definir arreglo pipe 0 de lectura 1 de escritura
     pid_t pid;
 
     // Crear un pipe
