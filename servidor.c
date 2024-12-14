@@ -11,11 +11,17 @@
 #define MAX_CLIENTS 10       // Max clients
 
 int keep_running = 1;
+int server_sock;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER; //crear el semaforo
 
 // Función para manejar la señal SIGINT y cerrar el servidor de forma segura
 void handle_sigint(int sig) {
+    printf("\n[INFO]: Señal SIGINT recibida. Cerrando servidor...\n");
     keep_running = 0;
+
+    // Detener operaciones del socket para desbloquear `accept`
+    shutdown(server_sock, SHUT_RDWR);
+    close(server_sock);
 }
 
 // Función para enviar alertas
@@ -122,7 +128,7 @@ int main() {
     printf("[INFO]: Servidor escuchando en el puerto %d...\n", PORT);
 
     while (keep_running) {
-        client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
+        int client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
         if (client_sock == -1) {
             if (keep_running) {
                 perror("[ERROR]: Error al aceptar conexión");
