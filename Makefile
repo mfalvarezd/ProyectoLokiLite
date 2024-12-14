@@ -22,7 +22,7 @@ $(PRUEBA): prueba_stress.o
 
 # Compilar el envio de alertas
 $(ENVIARALERTA): enviarAlerta.o
-	$(CC) $(CFLAGS) -o $(ENVIARALERTA) enviarAlerta.c
+	$(CC) $(CFLAGS) -o $(ENVIARALERTA) enviarAlerta.c -lcurl
 
 # Regla para compilar el agente objeto
 agente.o: agente.c
