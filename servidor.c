@@ -93,7 +93,7 @@ void *manejar_cliente(void *arg) {
 }
 
 int main() {
-    int server_sock, client_sock;
+    int client_sock;
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
 
@@ -128,7 +128,7 @@ int main() {
     printf("[INFO]: Servidor escuchando en el puerto %d...\n", PORT);
 
     while (keep_running) {
-        int client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
+        client_sock = accept(server_sock, (struct sockaddr *)&client_addr, &client_len);
         if (client_sock == -1) {
             if (keep_running) {
                 perror("[ERROR]: Error al aceptar conexión");
