@@ -20,16 +20,19 @@ void handle_sigint(int sig) {
 
 // Función para enviar alertas
 void enviar_alerta(const char *mensaje) {
-     // Escapar el mensaje para usarlo en la línea de comandos
+    // Escapar el mensaje para usarlo en la línea de comandos
     char comando[512];
-    snprintf(comando, sizeof(comando), "python enviarAlerta.py \"%s\"", mensaje);
+    snprintf(comando, sizeof(comando), "./enviarAlerta \"%s\"", mensaje);
 
     // Ejecutar el comando
     int resultado = system(comando);
     if (resultado == -1) {
-        perror("[ERROR]: No se pudo ejecutar el script de Python");
+        perror("[ERROR]: No se pudo ejecutar el programa enviarAlerta");
+    } else if (resultado != 0) {
+        fprintf(stderr, "[ERROR]: El programa enviarAlerta devolvió un código de error %d\n", resultado);
     }
 }
+
 
 // Función para procesar los datos recibidos del agente
 void procesar_datos(const char *datos) {

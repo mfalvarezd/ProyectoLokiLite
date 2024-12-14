@@ -3,9 +3,10 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g
 AGENTE = agente
 SERVIDOR = servidor
-PRUEBA = prueba_stress 
+PRUEBA = prueba_stress
+ENVIARALERTA = enviarAlerta 
 # Regla por defecto
-all: $(AGENTE) $(SERVIDOR) $(PRUEBA) 
+all: $(AGENTE) $(SERVIDOR) $(PRUEBA) $(ENVIARALERTA)
 
 # Compilar el agente
 $(AGENTE): agente.o
@@ -19,6 +20,10 @@ $(SERVIDOR): servidor.o
 $(PRUEBA): prueba_stress.o
 	$(CC) $(CFLAGS) -o $(PRUEBA) prueba_stress.o
 
+# Compilar el envio de alertas
+$(ENVIARALERTA): enviarAlerta.o
+	$(CC) $(CFLAGS) -o $(ENVIARALERTA) enviarAlerta.c
+
 # Regla para compilar el agente objeto
 agente.o: agente.c
 	$(CC) $(CFLAGS) -c agente.c
@@ -31,6 +36,9 @@ servidor.o: servidor.c
 prueba_stress.o: prueba_stress.c
 	$(CC) $(CFLAGS) -c prueba_stress.c
 
+# Regla para compilar enviarAlerta
+enviarAlerta.o: enviarAlerta.c
+	$(CC) $(CFLAGS) -c enviarAlerta.c
 # Limpiar archivos generados
 clean:
-	rm -f $(AGENTE) $(SERVIDOR) $(PRUEBA) *.o
+	rm -f $(AGENTE) $(SERVIDOR) $(PRUEBA) $(ENVIARALERTA) *.o
