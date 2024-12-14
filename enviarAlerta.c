@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <curl/curl.h>
 #include <stdlib.h>
-int main(){
-    
+int main(int argc, char *argv[]){
+    if(argc < 2){
+        fprintf(stderr,"Uso: $s <mensaje>\n",argv[0]);
+        return 1;
+
+    }
     CURL *curl;
     CURLcode res;
     const char *account_sid =getenv("TWILIO_ACCOUNT_SID");
@@ -14,7 +18,8 @@ int main(){
     const char *url ="https://api.twilio.com/2010-04-01/Accounts/";
     char full_url[256];
     snprintf(full_url,sizeof(full_url),"%s%s/Messages.json",url,account_sid);
-    const char *post_fields ="To=whatsapp:593986849600&From=whatsapp:14155238886&Body=prueba";
+    char post_fields[512];
+    snprintf(post_fields,sizeof(post_fields),"To=whatsapp:593986849600&From=whatsapp:14155238886&Body=%s",argv[1]);
     curl = curl_easy_init();
      
     if(curl){
