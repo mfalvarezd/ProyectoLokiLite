@@ -1,19 +1,38 @@
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 int main() {
+    pid_t pid1, pid2;
 
-    // Ejecutar el primer comando
-    int result1 = system("stress --cpu 7 --timeout 15");
-    if (result1 == -1) {
-        perror("Error al ejecutar el comando stress --cpu");
+    // Crear el primer proceso hijo para el primer comando
+    pid1 = fork();
+    if (pid1 < 0) {
+        perror("Error al crear el primer proceso");
         return 1;
+    } else if (pid1 == 0) {
+        // Proceso hijo: ejecutar el primer comando
+        execlp("stress", "stress", "--cpu", "7", "--timeout", "15", (char *)NULL);
+        perror("Error al ejecutar el primer comando");
+        return 1; // Salir si exec falla
     }
 
-    // Ejecutar el segundo comando
-    int result2 = system("stress --vm 5 --vm-bytes 3G --timeout 40");
-    if (result2 == -1) {
-        perror("Error al ejecutar el comando stress --vm");
+    // Crear el segundo proceso hijo para el segundo comando
+    pid2 = fork();
+    if (pid2 < 0) {
+        perror("Error al crear el segundo proceso");
         return 1;
+    } else if (pid2 == 0) {
+        // Proceso hijo: ejecutar el segundo comando
+        execlp("stress", "stress", "--vm", "5", "--vm-bytes", "3G", "--timeout", "60", (char *)NULL);
+        perror("Error al ejecutar el segundo comando");
+        return 1; // Salir si exec falla
     }
+
+    // Esperar a que ambos procesos hijos terminen
+    wait(NULL);
+    wait(NULL);
+
+    return 0;
 }
