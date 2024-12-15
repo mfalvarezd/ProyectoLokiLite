@@ -8,7 +8,8 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-
+#include <sys/sysinfo.h>
+#include <sys/statvfs.h>
 #define SERVER_IP "127.0.0.1"  // Dirección IP del servidor
 #define SERVER_PORT 8080       // Puerto del servidor
 #define BUFFER_SIZE 1024       // Tamaño del buffer para enviar datos
