@@ -3,7 +3,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-
 int main() {
     pid_t pid1, pid2;
 
@@ -14,11 +13,10 @@ int main() {
         return 1;
     } else if (pid1 == 0) {
         // Proceso hijo: ejecutar el primer comando
-        execlp("stress", "stress", "--cpu", "7", "--timeout", "15", (char *)NULL);
+        execlp("stress", "stress", "--cpu", "6", "--timeout", "15", (char *)NULL);
         perror("Error al ejecutar el primer comando");
         return 1; 
     }
-
     pid2 = fork();
     if (pid2 < 0) {
         perror("Error al crear el segundo proceso");
@@ -29,8 +27,6 @@ int main() {
         perror("Error al ejecutar el segundo comando");
         return 1; 
     }
-
-
     waitpid(pid1, NULL, 0);
     waitpid(pid2, NULL, 0);  
 
