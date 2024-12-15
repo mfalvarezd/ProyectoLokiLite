@@ -54,9 +54,9 @@ void procesar_datos(const char *datos) {
         printf("[INFO]: CPU Usage: %.2f%%, Memory Usage: %.2f%%\n", cpu_usage, memory_usage);
 
         // Verificar si cpu_usage o memory_usage superan el 80%
-        if (cpu_usage > 60.0) {
+        if (cpu_usage > 80.0) {
             char mensaje[512];
-            snprintf(mensaje, sizeof(mensaje), "Alerta: Uso de CPU ha superado el 60%%: %.2f%%", cpu_usage);
+            snprintf(mensaje, sizeof(mensaje), "Alerta: Uso de CPU ha superado el 80%%: %.2f%%", cpu_usage);
             enviar_alerta(mensaje);
         }
         if (memory_usage > 60.0) {
