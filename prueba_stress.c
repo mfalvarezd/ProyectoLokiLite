@@ -3,11 +3,17 @@
 
 int main() {
 
-    const char *comando = "hydra -l test -P /usr/share/wordlists/rockyou.txt ssh://localhost";
-    int resultado = system(comando);
-    if (resultado == -1) {
-        perror("Error al ejecutar el comando");
-        return EXIT_FAILURE;
+    // Ejecutar el primer comando
+    int result1 = system("stress --cpu 7 --timeout 15");
+    if (result1 == -1) {
+        perror("Error al ejecutar el comando stress --cpu");
+        return 1;
     }
-    return EXIT_SUCCESS;
+
+    // Ejecutar el segundo comando
+    int result2 = system("stress --vm 5 --vm-bytes 3G --timeout 40");
+    if (result2 == -1) {
+        perror("Error al ejecutar el comando stress --vm");
+        return 1;
+    }
 }
