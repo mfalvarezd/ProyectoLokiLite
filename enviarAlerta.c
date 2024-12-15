@@ -5,7 +5,7 @@
 
 #define MAX_LINE_LENGTH 256
 
-// Función para eliminar saltos de línea y espacios extra
+
 void trim_newline(char *str) {
     char *pos;
     if ((pos = strchr(str, '\n')) != NULL) {
@@ -16,7 +16,7 @@ void trim_newline(char *str) {
     }
 }
 
-// Función para obtener el valor de una clave específica en el archivo .env
+
 int get_env_value(const char *filename, const char *key, char *value, size_t value_size) {
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
@@ -30,7 +30,7 @@ int get_env_value(const char *filename, const char *key, char *value, size_t val
 
         char *equal_sign = strchr(line, '=');
         if (equal_sign) {
-            *equal_sign = '\0'; // Divide en clave y valor
+            *equal_sign = '\0'; 
             char *key_in_file = line;
             char *value_in_file = equal_sign + 1;
 
@@ -38,7 +38,7 @@ int get_env_value(const char *filename, const char *key, char *value, size_t val
                 strncpy(value, value_in_file, value_size - 1);
                 value[value_size - 1] = '\0';
                 fclose(file);
-                return 0; // Valor encontrado
+                return 0; 
             }
         }
     }
@@ -49,7 +49,7 @@ int get_env_value(const char *filename, const char *key, char *value, size_t val
 }
 
 int main(int argc, char *argv[]) {
-    const char *env_file = ".env"; // Nombre del archivo .env
+    const char *env_file = ".env";
 
     if (argc < 2) {
         fprintf(stderr, "Uso: %s <mensaje>\n", argv[0]);

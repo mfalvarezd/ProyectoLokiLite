@@ -46,18 +46,22 @@ void procesar_datos(const char *datos) {
 
     printf("[INFO]: Procesando datos: %s\n", datos);
 
-    char servicio[256];
-    int alertas = 0, errores = 0;
+    float cpu_usage = 0.0;
+    float memory_usage = 0.0;
 
-    if (sscanf(datos, "{ \"servicio\": \"%255[^\"]\", \"alertas\": %d, \"errores\": %d }",
-               servicio, &alertas, &errores) == 3) {
-        printf("[INFO]: Servicio: %s, Alertas: %d, Errores: %d\n", servicio, alertas, errores);
+    // Analizar los datos en formato JSON
+    if (sscanf(datos, "{ \"cpu_usage\": %f, \"memory_usage\": %f }", &cpu_usage, &memory_usage) == 2) {
+        printf("[INFO]: CPU Usage: %.2f%%, Memory Usage: %.2f%%\n", cpu_usage, memory_usage);
 
-
-        if (errores > 10) {
+        // Verificar si cpu_usage o memory_usage superan el 80%
+        if (cpu_usage > 80.0) {
             char mensaje[512];
-            snprintf(mensaje, sizeof(mensaje),
-                     "Servicio en error: %s. Demasiados errores (%d).", servicio, errores);
+            snprintf(mensaje, sizeof(mensaje), "Alerta: Uso de CPU ha superado el 80%%: %.2f%%", cpu_usage);
+            enviar_alerta(mensaje);
+        }
+        if (memory_usage > 80.0) {
+            char mensaje[512];
+            snprintf(mensaje, sizeof(mensaje), "Alerta: Uso de Memoria ha superado el 80%%: %.2f%%", memory_usage);
             enviar_alerta(mensaje);
         }
     } else {
@@ -66,6 +70,7 @@ void procesar_datos(const char *datos) {
 
     pthread_mutex_unlock(&mutex);
 }
+
 
 // Función manejadora para cada cliente
 void *manejar_cliente(void *arg) {
@@ -91,6 +96,7 @@ void *manejar_cliente(void *arg) {
     close(client_sock);
     return NULL;
 }
+
 
 int main() {
     int client_sock;

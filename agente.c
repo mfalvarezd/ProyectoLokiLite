@@ -20,24 +20,6 @@ void handle_sigint(int sig) {
     keep_running = 0;
 }
 
-//help
-void print_usage(const char *prog_name) {
-    printf("Uso: %s <servicio1> <servicio2> ... [servicioN]\n", prog_name);
-}
-
-//verificar parametro es un numero
-int es_numero(const char *str) {
-    if (str == NULL || *str == '\0') {
-        return 0;
-    }
-    for (int i = 0; str[i] != '\0'; i++) {
-        if (!isdigit(str[i])) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
 
 int conectar_al_servidor() {
     int sock;
@@ -67,134 +49,128 @@ int conectar_al_servidor() {
     return sock;
 }
 
-
-void ejecutarExec(const char *comando, char *resultado, size_t tamaño) {
-    int pipefd[2]; //definir arreglo pipe 0 de lectura 1 de escritura
-    pid_t pid;
-
-    // Crear un pipe
-    if (pipe(pipefd) == -1) {
-        perror("[ERROR]: No se pudo crear el pipe");
-        return;
+float obtener_uso_cpu() {
+    static long prev_idle = 0, prev_total = 0;
+    long idle, total;
+    FILE *fp = fopen("/proc/stat", "r");
+    if (!fp) {
+        perror("[ERROR]: No se puede leer /proc/stat");
+        return -1.0;
     }
 
-    // Crear un nuevo proceso
-    pid = fork();
-    if (pid == -1) {
-        perror("[ERROR]: No se pudo hacer fork");
-        close(pipefd[0]);
-        close(pipefd[1]);
-        return;
-    }
+    char buffer[256];
+    fgets(buffer, sizeof(buffer), fp);
+    fclose(fp);
 
-    if (pid == 0) { // Proceso hijo
-        // Redirigir la salida estándar al pipe
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[0]); 
-        close(pipefd[1]); 
+    long user, nice, system, idle_time;
+    sscanf(buffer, "cpu %ld %ld %ld %ld", &user, &nice, &system, &idle_time);
 
-        // Ejecutar el comando
-        char *args[] = {"sh", "-c", (char *)comando, NULL}; // Para usar comandos de shell
-        execv("/bin/sh", args);// se ejecutan los argumentos que reciva execv en forma de arreglo
-        perror("[ERROR]: execv falló"); // el excv fallo
-        exit(EXIT_FAILURE);
-    } else { // Proceso padre
-        close(pipefd[1]); // Cerrar el lado de escritura del pipe
+    idle = idle_time;
+    total = user + nice + system + idle;
 
-        // Leer del pipe
-        ssize_t bytes_read = read(pipefd[0], resultado, tamaño - 1);
-        if (bytes_read >= 0) {
-            resultado[bytes_read] = '\0'; //la cadena existe y se pudo leer
-        } else {
-            perror("[ERROR]: No se pudo leer del pipe");
-        }
-        close(pipefd[0]); // Cerrar el lado de lectura del pipe
-        wait(NULL); // Esperar a que el proceso hijo termine
-    }
+    float usage = (float)(total - prev_total - (idle - prev_idle)) / (total - prev_total) * 100;
+    prev_idle = idle;
+    prev_total = total;
+
+    return usage;
 }
 
-// Función de monitoreo y envio de datos al server
-void monitorear_servicios(int server_sock, char **servicios, int num_servicios) {
-    char buffer[BUFFER_SIZE];
-    char resultado[BUFFER_SIZE];
+float obtener_uso_memoria() {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        perror("[ERROR]: No se puede obtener información de memoria");
+        return -1.0;
+    }
+    return (float)(info.totalram - info.freeram) / info.totalram * 100;
+}
 
-    // Array de prioridades
-    const char *prioridades[] = {"alert", "err", "warning", "info"};
-    int num_prioridades = sizeof(prioridades) / sizeof(prioridades[0]);
+float obtener_memoria_disponible() {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        perror("[ERROR]: No se puede obtener información de memoria");
+        return -1.0;
+    }
+    return (float)info.freeram / info.totalram * 100; // Porcentaje de memoria disponible
+}
+
+float obtener_uso_disco(const char *ruta) {
+    struct statvfs stat;
+    if (statvfs(ruta, &stat) != 0) {
+        perror("[ERROR]: No se puede obtener información del disco");
+        return -1.0;
+    }
+    return (float)(stat.f_blocks - stat.f_bfree) / stat.f_blocks * 100;
+}
+
+float obtener_uso_swap() {
+    struct sysinfo info;
+    if (sysinfo(&info) == -1) {
+        perror("[ERROR]: No se puede obtener información de swap");
+        return -1.0;
+    }
+    return (float)(info.totalswap - info.freeswap) / info.totalswap * 100; // Porcentaje de uso de swap
+}
+
+void obtener_trafico_red(long *in, long *out) {
+    FILE *fp = fopen("/proc/net/dev", "r");
+    if (!fp) {
+        perror("[ERROR]: No se puede leer /proc/net/dev");
+        *in = *out = -1;
+        return;
+    }
+
+    char buffer[256];
+    *in = *out = 0;
+
+    fgets(buffer, sizeof(buffer), fp); // Ignorar la primera línea
+    fgets(buffer, sizeof(buffer), fp); // Ignorar la segunda línea
+
+    while (fgets(buffer, sizeof(buffer), fp)) {
+        char interfaz[32];
+        long bytes_in, bytes_out;
+        sscanf(buffer, "%s %ld %*d %*d %*d %*d %*d %*d %ld", interfaz, &bytes_in, &bytes_out);
+        *in += bytes_in;
+        *out += bytes_out;
+    }
+
+    fclose(fp);
+}
+
+
+void recolectar_metricas(int server_sock) {
+    char buffer[BUFFER_SIZE];
 
     while (keep_running) {
-        for (int i = 0; i < num_servicios; i++) {
-            printf("[INFO]: Monitoreando servicio: %s\n", servicios[i]);
+        float cpu_usage = obtener_uso_cpu();
+        float memory_usage = obtener_uso_memoria();
+        float available_memory = obtener_memoria_disponible();
+        float disk_usage = obtener_uso_disco("/");
+        float swap_usage = obtener_uso_swap();
+        long network_in, network_out;
+        obtener_trafico_red(&network_in, &network_out);
 
-            // Inicializar conteos de prioridades
-            int conteos[num_prioridades];
-            memset(conteos, 0, sizeof(conteos)); // Reiniciar conteos
+        snprintf(buffer, sizeof(buffer),
+                 "{ \"cpu_usage\": %.2f, \"memory_usage\": %.2f, \"available_memory\": %.2f, \"disk_usage\": %.2f, \"network_in\": %ld, \"network_out\": %ld, \"swap_usage\": %.2f }",
+                 cpu_usage, memory_usage, available_memory, disk_usage, network_in, network_out, swap_usage);
 
-            // Contar las diferentes prioridades
-            for (int j = 0; j < num_prioridades; j++) {
-                char comando[BUFFER_SIZE];
-                snprintf(comando, sizeof(comando), "journalctl -u %s -p '%s' | wc -l", servicios[i], prioridades[j]);
-                ejecutarExec(comando, resultado, sizeof(resultado));
-                conteos[j] = atoi(resultado);
-            }
-
-            // Crear mensaje en formato JSON DASHBOARD
-            snprintf(buffer, sizeof(buffer),
-                     "{ \"servicio\": \"%s\", \"alertas\": %d, \"errores\": %d, \"avisos\": %d, \"informacion\": %d }",
-                     servicios[i], conteos[0], conteos[1], conteos[2], conteos[3]);
-
-            // Enviar los datos al servidor
-            if (send(server_sock, buffer, strlen(buffer), 0) == -1) {
-                perror("[ERROR]: No se pudieron enviar los datos al servidor");
-            } else {
-                printf("[INFO]: Datos enviados: %s\n", buffer);
-            }
+        // Enviar las métricas al servidor
+        if (send(server_sock, buffer, strlen(buffer), 0) == -1) {
+            perror("[ERROR]: No se pudieron enviar los datos al servidor");
+        } else {
+            printf("[INFO]: Datos enviados: %s\n", buffer);
         }
 
-        sleep(TIEMPO_ACTUALIZACION); // Esperar el tiempo de actualización constante
+        sleep(TIEMPO_ACTUALIZACION);
     }
 }
 
-// verificar si solo recibe strrings como parametros
-int es_nombre_servicio_valido(const char *servicio) {
-    return !(es_numero(servicio)); // No debe ser un número
-}
 
-int main(int argc, char *argv[]) {
-    // Verificar si hay al menos 2 servicios
-    if (argc < 3) { // Al menos 2 servicios + el nombre del programa
-        print_usage(argv[0]);
-        return EXIT_FAILURE;
-    }
 
-    // Aseguramos que al menos los dos primeros argumentos sean servicios
-    char *servicio1 = argv[1];
-    char *servicio2 = argv[2];
 
-    // Verificar que todos los servicios sean válidos
-    for (int i = 1; i < argc; i++) {
-        if (es_numero(argv[i])) {
-            fprintf(stderr, "[ERROR]: '%s' no es un nombre de servicio válido. No debe ser un número.\n", argv[i]);
-            print_usage(argv[0]);
-            return EXIT_FAILURE;
-        }
-    }
 
-    // Verificar que haya al menos 2 servicios
-    int num_servicios = argc - 1;
-    if (num_servicios < 2) {
-        fprintf(stderr, "[ERROR]: Se requieren al menos dos servicios para monitorear.\n");
-        print_usage(argv[0]);
-        return EXIT_FAILURE;
-    }
 
-    char **servicios = argv + 1;
+int main() {
 
-    printf("[INFO]: Numero de servicios a monitorear: %d\n", num_servicios);
-    printf("[INFO]: Servicios a monitorear: ");
-    for (int i = 0; i < num_servicios; i++) {
-        printf("%s%s", servicios[i], (i < num_servicios - 1) ? ", " : "\n");
-    }
     printf("[INFO]: Tiempo de actualizacion: %d segundos\n", TIEMPO_ACTUALIZACION);
 
     // Manejar la señal SIGINT para detener el programa
@@ -203,8 +179,8 @@ int main(int argc, char *argv[]) {
     // Conectar al servidor
     int server_sock = conectar_al_servidor();
 
-    // Monitorear servicios y enviar datos al servidor
-    monitorear_servicios(server_sock, servicios, num_servicios);
+    // Recolectar métricas y enviarlas al servidor
+    recolectar_metricas(server_sock);
 
     // Cerrar el socket al finalizar
     close(server_sock);
