@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 int main() {
     pid_t pid1, pid2;
@@ -31,8 +32,8 @@ int main() {
     }
 
     // Esperar a que ambos procesos hijos terminen
-    wait(NULL);
-    wait(NULL);
+    waitpid(pid1, NULL, 0);  // Espera a que termine el primer proceso
+    waitpid(pid2, NULL, 0);  // Espera a que termine el segundo proceso
 
     return 0;
 }
