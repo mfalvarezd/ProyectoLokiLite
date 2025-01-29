@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -164,10 +165,6 @@ void recolectar_metricas(int server_sock) {
         sleep(TIEMPO_ACTUALIZACION);
     }
 }
-
-
-
-
 
 
 int main() {
